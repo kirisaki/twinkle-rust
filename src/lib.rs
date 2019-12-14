@@ -191,19 +191,19 @@ mod tests {
 
     #[tokio::test]
     async fn test_ping() -> Result<(), std::io::Error> {
-        let (mut client, mut listener) = open("127.0.0.1:3000".to_string()).await?;
+        let (mut client, mut listener) = open("127.0.0.1:9000".to_string()).await?;
         let (_ ,res) = future::join(timeout(WAIT ,listener.listen()), client.ping()).await;
         res
     }
 
     #[tokio::test]
     async fn test_get_not_found() -> Result<(), std::io::Error> {
-        let (mut client, mut listener) = open("127.0.0.1:3000".to_string()).await?;
-        let (_, res) = future::join(timeout(WAIT ,listener.listen()), async move {
+        let (mut client, mut listener) = open("127.0.0.1:9000".to_string()).await?;
+        let (_, res) = future::join(timeout(WAIT ,listener.listen()), timeout(WAIT, async move {
             client.unset(b"hoge".to_vec()).await;
             client.get(b"hoge".to_vec()).await
-        }).await;
-        match res {
+        })).await;
+        match res.unwrap() {
             Ok(_) => Err(Error::new(ErrorKind::Other, "found key")),
             Err(_) => Ok(()),
         }
@@ -211,12 +211,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_set_and_get() {
-        let (mut client, mut listener) = open("127.0.0.1:3000".to_string()).await.unwrap();
-        let (_, res) = future::join(timeout(WAIT ,listener.listen()),
-                     async move {
-                         client.set(b"fuga".to_vec(), b"foo".to_vec()).await;
-                         client.get(b"fuga".to_vec()).await.unwrap()
-                     }).await;
-        assert_eq!(res, b"foo".to_vec());        
+        let (mut client, mut listener) = open("127.0.0.1:9000".to_string()).await.unwrap();
+        let (_, res) = future::join(timeout(WAIT ,listener.listen()), timeout(WAIT, async move {
+            client.set(b"fuga".to_vec(), b"foo".to_vec()).await;
+            client.get(b"fuga".to_vec()).await.unwrap()
+        })).await;
+        assert_eq!(res.unwrap(), b"foo".to_vec());        
     }
 }

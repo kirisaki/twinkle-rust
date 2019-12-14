@@ -6,6 +6,8 @@ use futures::future;
 use tokio::sync::Mutex;
 use std::sync::{Arc};
 use tokio::net::udp::{RecvHalf, SendHalf};
+use tokio::time::{timeout};
+use std::time::{Duration};
 
 
 // limitation of UDP
@@ -50,7 +52,7 @@ pub async fn open<A: ToSocketAddrs>(addr: A) -> Result<(Client, Listener), std::
 impl Client {
     pub async fn ping(&mut self) -> Result<(), std::io::Error> {
         let mut rx = Request::Ping.issue()?.dispatch(self).await?;
-        println!("{:?}", rx.recv().await);
+        timeout(Duration::from_secs(1), rx.recv()).await?;
         Ok(())
     }
 }
@@ -75,9 +77,9 @@ impl Listener {
                     let mut tabl = tabl.lock().await;
                     let val = buf[UUID_LEN + 1..amt].to_vec();
                     match tabl.get_mut(&uuid) {
-                        Some(c) => {c.send(val).await; return Ok(())},
+                        Some(c) => {c.send(val).await;},
                         None => return Err(e),
-                    }
+                    };
                 }
             }
 
@@ -95,12 +97,12 @@ impl Request {
                 c.append(&mut uuid.as_bytes().to_vec());
                 c
             },
-            Request::Get(bytes) => {
-                let ks = usize_to_bytes(bytes.len())?;
+            Request::Get(key) => {
+                let ks = usize_to_bytes(key.len())?;
                 let mut c = vec![0x02];
                 c.append(&mut uuid.as_bytes().to_vec());
                 c.append(&mut ks.to_vec());
-                c.append(&mut bytes.to_vec());
+                c.append(&mut key.to_vec());
                 c
             },
             Request::Set(key, val) => {
@@ -159,8 +161,7 @@ mod tests {
     #[tokio::test]
     async fn test_ping() -> Result<(), std::io::Error> {
         let (mut client, mut listener) = open("127.0.0.1:3000".to_string()).await?;
-        let res = future::join(client.ping(), listener.listen()).await;
-        println!("{:?}", res);
-        Ok(())
+        let (res,_) = future::join(client.ping(), timeout(Duration::from_secs(1),listener.listen())).await;
+        res
     }
 }

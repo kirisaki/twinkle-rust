@@ -65,6 +65,20 @@ impl Client {
             None => Err(Error::new(ErrorKind::Other, "key notfound")),
         }
     }
+    pub async fn set(&mut self, key: Bytes, val: Bytes) -> Result<Bytes, std::io::Error> {
+        let mut rx = Request::Set(key, val).issue()?.dispatch(self).await?;
+        match rx.recv().await {
+            Some(v) => v,
+            None => Err(Error::new(ErrorKind::Other, "key notfound")),
+        }
+    }
+    pub async fn unset(&mut self, key: Bytes) -> Result<Bytes, std::io::Error> {
+        let mut rx = Request::Unset(key).issue()?.dispatch(self).await?;
+        match rx.recv().await {
+            Some(v) => v,
+            None => Err(Error::new(ErrorKind::Other, "key notfound")),
+        }
+    }
 }
 
 impl Listener {
@@ -178,18 +192,31 @@ mod tests {
     #[tokio::test]
     async fn test_ping() -> Result<(), std::io::Error> {
         let (mut client, mut listener) = open("127.0.0.1:3000".to_string()).await?;
-        let (res ,_) = future::join(client.ping(), timeout(WAIT ,listener.listen())).await;
+        let (_ ,res) = future::join(timeout(WAIT ,listener.listen()), client.ping()).await;
         res
     }
 
     #[tokio::test]
     async fn test_get_not_found() -> Result<(), std::io::Error> {
         let (mut client, mut listener) = open("127.0.0.1:3000".to_string()).await?;
-        let (res, _) = future::join(client.get(b"hoge".to_vec()), timeout(WAIT ,listener.listen())).await;
+        let (_, res) = future::join(timeout(WAIT ,listener.listen()), async move {
+            client.unset(b"hoge".to_vec()).await;
+            client.get(b"hoge".to_vec()).await
+        }).await;
         match res {
             Ok(_) => Err(Error::new(ErrorKind::Other, "found key")),
             Err(_) => Ok(()),
         }
+    }
 
+    #[tokio::test]
+    async fn test_set_and_get() {
+        let (mut client, mut listener) = open("127.0.0.1:3000".to_string()).await.unwrap();
+        let (_, res) = future::join(timeout(WAIT ,listener.listen()),
+                     async move {
+                         client.set(b"fuga".to_vec(), b"foo".to_vec()).await;
+                         client.get(b"fuga".to_vec()).await.unwrap()
+                     }).await;
+        assert_eq!(res, b"foo".to_vec());        
     }
 }

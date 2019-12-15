@@ -7,8 +7,8 @@ edition = "2018"
 
 description = "Binding for twinkle"
 repository = "https://github.com/kirisaki/twinkle-rust"
-keyeords = ["db"]
-categories = ["Database implementations"]
+keyeords = ["db", "database"]
+categories = ["database", "database-implementations"]
 readme = "README.md"
 
 [dependencies]

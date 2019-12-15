@@ -4,14 +4,18 @@ Binding of [Twinkle](https://github.com/kirisaki/twinkle) for Rust.
 
 ## Usage
 
-```Cargo.toml
+Cargo.toml
+
+```toml
 [dependencies]
 twinkle = "0.1"
 futures = "0.3"
 tokio = { version = "0.2", features = ["full"] }
 ```
 
-```main.rs
+main.rs
+
+```rust
 use futures::future::{join};
 
 #[tokio::main]

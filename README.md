@@ -20,12 +20,12 @@ use futures::future::{join};
 
 #[tokio::main]
 async fn main(){
-    let {mut client, mut listener) = twinkle::open("i27.0.0.1:9000".to_string()).await.unwrap();
+    let {mut client, mut listener) = twinkle::open("i27.0.0.1:9000").await.unwrap();
     use futures::future::{join};
 
 #[tokio::main]
 async fn main(){
-    let (client, mut listener) = twinkle::open("127.0.0.1:3000".to_string()).await.unwrap();
+    let (client, mut listener) = twinkle::open("127.0.0.1:9000").await.unwrap();
     join(listener.listen(), your_app(client));
 }
 

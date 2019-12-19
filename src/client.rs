@@ -4,29 +4,35 @@ use std::io::{Error, ErrorKind};
 
 use tokio::net::{UdpSocket, ToSocketAddrs};
 use tokio::sync::Mutex;
+use tokio::sync::mpsc::{Sender, channel};
 use tokio::net::udp::SendHalf;
 use tokio::time::timeout;
 
 
+use crate::dispatcher::*;
 use crate::listener::*;
 use crate::request::*;
 use crate::types::*;
+use crate::packet::*;
 
+#[derive(Clone)]
 pub struct Client {
-    pub sock: SendHalf,
+    pub chan: Sender<Bytes>,
     pub tabl: Arc<Mutex<Table>>,
 }
 
 impl Client {
-    pub async fn open<A: ToSocketAddrs>(addr: A) -> Result<(Client, Listener), std::io::Error> {
+    pub async fn open<A: ToSocketAddrs>(addr: A) -> Result<(Client, Dispatcher, Listener), std::io::Error> {
         let sock = UdpSocket::bind("127.0.0.1:0").await?;
         sock.connect(addr).await?;
-        let (rx, tx) = sock.split();
+        let (rxs, txs) = sock.split();
+        let (txc, rxc) = channel(1024);
 
         let tabl = Arc::new(Mutex::new(HashMap::new()));
-        let c = Client{sock: tx, tabl: tabl.clone()};
-        let l = Listener{sock: rx, tabl: tabl.clone()};
-        Ok((c, l))
+        let c = Client{chan: txc, tabl: tabl.clone()};
+        let d = Dispatcher{chan: rxc, sock: txs};
+        let l = Listener{sock: rxs, tabl: tabl.clone()};
+        Ok((c, d, l))
     }
 
     pub async fn ping(&mut self) -> Result<(), std::io::Error> {

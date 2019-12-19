@@ -16,11 +16,11 @@ pub struct Packet {
 impl Packet {
     pub async fn dispatch(self,  c: &mut Client) -> Result<Receiver<Result<Bytes, Error>>, std::io::Error> {
         let Packet{cont, uuid} = self;
-        let Client{sock, tabl} = c;
+        let Client{chan, tabl} = c;
         let (tx, rx) = channel(1024 * 64);
         let mut tabl = tabl.lock().await;
         tabl.insert(uuid, tx);
-        sock.send(&cont).await?;
+        chan.send(cont).await;
         Ok(rx)
     }
 }

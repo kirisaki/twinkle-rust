@@ -2,10 +2,11 @@ pub mod client;
 pub mod listener;
 pub mod request;
 pub mod packet;
+pub mod dispatcher;
 pub mod types;
 pub mod errors;
 
-use futures::future;
+use futures::future::join3;
 use tokio::time::timeout;
 use std::time::{Duration};
 use std::io::{Error, ErrorKind};
@@ -19,17 +20,23 @@ mod tests {
 
     #[tokio::test]
     async fn test_ping() -> Result<(), std::io::Error> {
-        let (mut client, mut listener) = Client::open("127.0.0.1:3000").await?;
-        let (_ ,res) = future::join(timeout(WAIT ,listener.listen()), client.ping()).await;
+        let (mut client, mut dispatcher, mut listener) = Client::open("127.0.0.1:3000").await?;
+        let (_, _,res) = join3(
+            timeout(WAIT ,listener.listen()),
+            timeout(WAIT ,dispatcher.run()),
+            client.ping()).await;
         res
     }
 
     #[tokio::test]
     async fn test_get_not_found() -> Result<(), std::io::Error> {
-        let (mut client, mut listener) = Client::open("127.0.0.1:3000").await?;
-        let (_, res) = future::join(timeout(WAIT ,listener.listen()), timeout(WAIT, async move {
-            client.unset(b"hoge".to_vec()).await;
-            client.get(b"hoge".to_vec()).await
+        let (mut client, mut dispatcher, mut listener) = Client::open("127.0.0.1:3000").await?;
+        let (_, _, res) = join3(
+            timeout(WAIT ,listener.listen()),
+            timeout(WAIT ,dispatcher.run()),
+            timeout(WAIT, async move {
+                client.unset(b"hoge".to_vec()).await;
+                client.get(b"hoge".to_vec()).await
         })).await;
         match res.unwrap() {
             Ok(_) => Err(Error::new(ErrorKind::Other, "found key")),
@@ -39,10 +46,13 @@ mod tests {
 
     #[tokio::test]
     async fn test_set_and_get() {
-        let (mut client, mut listener) = Client::open("127.0.0.1:3000").await.unwrap();
-        let (_, res) = future::join(timeout(WAIT ,listener.listen()), timeout(WAIT, async move {
-            client.set(b"fuga".to_vec(), b"foo".to_vec()).await;
-            client.get(b"fuga".to_vec()).await.unwrap()
+        let (mut client, mut dispatcher, mut listener) = Client::open("127.0.0.1:3000").await.unwrap();
+        let (_, _, res) = join3(
+            timeout(WAIT ,listener.listen()),
+            timeout(WAIT ,dispatcher.run()),
+            timeout(WAIT, async move {
+                client.set(b"fuga".to_vec(), b"foo".to_vec()).await;
+                client.get(b"fuga".to_vec()).await.unwrap()
         })).await;
         assert_eq!(res.unwrap(), b"foo".to_vec());
     }

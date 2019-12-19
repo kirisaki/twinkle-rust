@@ -8,6 +8,7 @@ use crate::client::Client;
 use crate::types::*;
 use crate::errors::*;
 
+#[derive(Clone)]
 pub struct Packet {
     pub cont: Bytes,
     pub uuid: Uuid,

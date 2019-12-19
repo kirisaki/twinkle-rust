@@ -6,8 +6,7 @@ use tokio::net::{UdpSocket, ToSocketAddrs};
 use tokio::sync::Mutex;
 use tokio::sync::mpsc::{Sender, channel};
 use tokio::net::udp::SendHalf;
-use tokio::time::timeout;
-
+use tokio::time::{timeout, delay_for, Duration};
 
 use crate::dispatcher::*;
 use crate::listener::*;
@@ -41,18 +40,28 @@ impl Client {
         Ok(())
     }
     pub async fn get(&mut self, key: Bytes) -> Result<Bytes, std::io::Error> {
-        let mut rx = Request::Get(key).issue()?.dispatch(self).await?;
-        match rx.recv().await {
-            Some(v) => v,
-            None => Err(Error::new(ErrorKind::Other, "key notfound")),
-        }
+        let packet = Request::Get(key).issue()?;
+        for i in 0..10u64 {
+            let mut rx = packet.clone().dispatch(self).await?;
+            match rx.try_recv() {
+                Ok(v) => return v,
+                Err(_) => {},
+            };
+            delay_for(Duration::from_nanos(i)).await;
+        };
+        Err(Error::new(ErrorKind::Other, "request timeout"))
     }
-    pub async fn set(&mut self, key: Bytes, val: Bytes) -> Result<Bytes, std::io::Error> {
-        let mut rx = Request::Set(key, val).issue()?.dispatch(self).await?;
-        match rx.recv().await {
-            Some(v) => v,
-            None => Err(Error::new(ErrorKind::Other, "key notfound")),
-        }
+    pub async fn set(&mut self, key: Bytes, val: Bytes) -> Result<(), std::io::Error> {
+        let packet = Request::Set(key, val).issue()?;
+        for i in 0..10u64 {
+            let mut rx = packet.clone().dispatch(self).await?;
+            match rx.try_recv() {
+                Ok(_) => return Ok(()),
+                Err(_) => {},
+            };
+            delay_for(Duration::from_nanos(i)).await;
+        };
+        Err(Error::new(ErrorKind::Other, "request timeout"))
     }
     pub async fn unset(&mut self, key: Bytes) -> Result<Bytes, std::io::Error> {
         let mut rx = Request::Unset(key).issue()?.dispatch(self).await?;
@@ -62,3 +71,4 @@ impl Client {
         }
     }
 }
+

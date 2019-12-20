@@ -18,10 +18,10 @@ impl Packet {
     pub async fn dispatch(self,  c: &mut Client) -> Result<Receiver<Result<Bytes, Error>>, std::io::Error> {
         let Packet{cont, uuid} = self;
         let Client{chan, tabl} = c;
-        let (tx, rx) = channel(1024 * 64);
+        let (tx, rx) = channel(1024 * 1024 * 1024);
         let mut tabl = tabl.lock().await;
         tabl.insert(uuid, tx);
-        chan.send(cont).await;
+        let _ = chan.send(cont).await;
         Ok(rx)
     }
 }

@@ -32,64 +32,32 @@ impl Client {
         Ok((c, d, l))
     }
 
-    pub async fn ping(&mut self) -> Result<(), std::io::Error> {
-        for _ in 0..10 {
-            let packet = Request::Ping.issue()?;
-            let mut rx = packet.clone().dispatch(self).await?;
-            for i in 0..5u32 {
-                delay_for(Duration::from_millis(2u64.pow(i))).await;
-                match rx.try_recv() {
-                    Ok(_) => return Ok(()),
-                    Err(_) => {},
-                };
-
-            };
-        }
-        Err(Error::new(ErrorKind::Other, "request timeout"))
+    pub async fn ping(&mut self) -> Result<Bytes, std::io::Error> {
+        send(self, Request::Ping).await
     }
     pub async fn get(&mut self, key: Bytes) -> Result<Bytes, std::io::Error> {
-        for _ in 0..10 {
-            let packet = Request::Get(key.clone()).issue()?;
-            let mut rx = packet.clone().dispatch(self).await?;
-            for i in 0..5u32 {
-                delay_for(Duration::from_millis(2u64.pow(i))).await;
-                match rx.try_recv() {
-                    Ok(v) => return v,
-                    Err(_) => {},
-                };
-            };
-        }
-        Err(Error::new(ErrorKind::Other, "request timeout"))
+        send(self, Request::Get(key)).await
     }
-    pub async fn set(&mut self, key: Bytes, val: Bytes) -> Result<(), std::io::Error> {
-        for _ in 0..10 {
-            let packet = Request::Set(key.clone(), val.clone()).issue()?;
-            let mut rx = packet.clone().dispatch(self).await?;
-            for i in 0..5u32 {
-                delay_for(Duration::from_millis(2u64.pow(i))).await;
-                match rx.try_recv() {
-                    Ok(_) => return Ok(()),
-                    Err(_) => {},
-                };
-
-            };
-        }
-        Err(Error::new(ErrorKind::Other, "request timeout"))
+    pub async fn set(&mut self, key: Bytes, val: Bytes) -> Result<Bytes, std::io::Error> {
+        send(self, Request::Set(key, val)).await
     }
-    pub async fn unset(&mut self, key: Bytes) -> Result<(), std::io::Error> {
-        for _ in 0..10 {
-            let packet = Request::Unset(key.clone()).issue()?;
-            let mut rx = packet.clone().dispatch(self).await?;
-            for i in 0..5u32 {
-                delay_for(Duration::from_millis(2u64.pow(i))).await;
-                match rx.try_recv() {
-                    Ok(_) => return Ok(()),
-                    Err(_) => {},
-                };
-
-            };
-        }
-        Err(Error::new(ErrorKind::Other, "request timeout"))
+    pub async fn unset(&mut self, key: Bytes) -> Result<Bytes, std::io::Error> {
+        send(self, Request::Unset(key)).await
     }
 }
 
+async fn send(client: &mut Client, request: Request) -> Result<Bytes, std::io::Error>{
+    let packet = request.issue()?;
+    for _ in 0..10 {
+        let mut rx = packet.clone().dispatch(client).await?;
+        for i in 0..5u32 {
+            delay_for(Duration::from_millis(2u64.pow(i))).await;
+            match rx.try_recv() {
+                Ok(v) => return v,
+                Err(_) => {},
+            };
+
+        };
+    }
+    Err(Error::new(ErrorKind::Other, "request timeout"))
+}

@@ -25,7 +25,10 @@ mod tests {
             timeout(WAIT ,listener.listen()),
             timeout(WAIT ,dispatcher.run()),
             client.ping()).await;
-        res
+        match res {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 
     #[tokio::test]

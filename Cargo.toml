@@ -1,11 +1,11 @@
 [package]
 name = "twinkle"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Akihito KIRISAKI <kirisaki@klaraworks.net>"]
 license = "BSD-3-Clause"
 edition = "2018"
 
-description = "Binding for twinkle"
+description = "Client library for twinkle"
 repository = "https://github.com/kirisaki/twinkle-rust"
 keyeords = ["db", "database"]
 categories = ["database", "database-implementations"]

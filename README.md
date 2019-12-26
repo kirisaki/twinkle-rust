@@ -2,6 +2,10 @@
 
 Binding of [Twinkle](https://github.com/kirisaki/twinkle) for Rust.
 
+[![Actions Status](https://github.com/kirisaki/twinkle-rust/workflows/test-twinkle/badge.svg)](https://github.com/kirisaki/twinkle-rust/actions)
+[![twinkle at crates.io](https://img.shields.io/crates/v/twinkle.svg)](https://crates.io/crates/twinkle)
+[![twinkle at docs.rs](https://docs.rs/twinkle/badge.svg)](https://docs.rs/crate-name)
+
 ## Usage
 
 Cargo.toml
@@ -20,13 +24,8 @@ use futures::future::{join};
 
 #[tokio::main]
 async fn main(){
-    let {mut client, mut listener) = twinkle::open("i27.0.0.1:9000").await.unwrap();
-    use futures::future::{join};
-
-#[tokio::main]
-async fn main(){
-    let (client, mut listener) = twinkle::open("127.0.0.1:9000").await.unwrap();
-    join(listener.listen(), your_app(client));
+    let (client, manager) = twinkle::open("127.0.0.1:3000").await.unwrap();
+    join(manager.run(), your_app(client));
 }
 
 async fn your_app(mut c: twinkle::Client) {

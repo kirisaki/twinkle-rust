@@ -1,10 +1,10 @@
-name: test Twinkle
+name: test-twinkle
 
 on: [push]
 
 jobs:
   build:
-    name: test Twinkle
+    name: test-twinkle
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v1

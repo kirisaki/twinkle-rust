@@ -15,7 +15,7 @@ pub struct Listener {
 }
 
 impl Listener {
-    pub async fn listen(&mut self) -> Result<(), std::io::Error> {
+    pub async fn run(&mut self) -> Result<(), std::io::Error> {
         let Listener{sock, tabl} = self;
         let mut buf = vec![0; BUF_SIZE];
         loop {

@@ -1,10 +1,42 @@
+//! Client library for [twinkle](https://github.com/kirisaki/twinkle).
+//!
+//! Cargo.toml
+//!
+//! ```toml
+//! [dependencies]
+//! twinkle = "0.1"
+//! futures = "0.3"
+//! tokio = { version = "0.2", features = ["full"] }
+//! ```
+//! 
+//! main.rs
+//! 
+//! ```rust
+//! use futures::future::{join};
+//! use twinkle::client::Client;
+//! 
+//! #[tokio::main]
+//! async fn main(){
+//!     let (client, manager) = Client::open("127.0.0.1:3000").await.unwrap();
+//!     join(manager.run(), your_app(client));
+//! }
+//! 
+//! async fn your_app(mut c: Client) {
+//!     c.ping().await;
+//!     c.set(b"hoge".to_vec(), b"foo".to_vec()).await;
+//!     c.get(b"hoge".to_vec()).await;
+//!     c.unset(b"hoge".to_vec()).await;
+//! }
+//! 
+//! ```
+
 pub mod client;
-pub mod listener;
+mod listener;
 pub mod request;
-pub mod packet;
-pub mod dispatcher;
-pub mod types;
-pub mod errors;
+mod packet;
+mod dispatcher;
+mod types;
+mod errors;
 
 use futures::future::join;
 use tokio::time::timeout;

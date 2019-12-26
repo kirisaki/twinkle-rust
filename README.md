@@ -20,12 +20,12 @@ tokio = { version = "0.2", features = ["full"] }
 main.rs
 
 ```rust
-use futures::future::{join3};
+use futures::future::{join};
 
 #[tokio::main]
 async fn main(){
-    let (client, mut listener, mut dispatcher) = twinkle::open("127.0.0.1:3000").await.unwrap();
-    join(listener.listen(), dispatcher.run(), your_app(client));
+    let (client, manager) = twinkle::open("127.0.0.1:3000").await.unwrap();
+    join(manager.run(), your_app(client));
 }
 
 async fn your_app(mut c: twinkle::Client) {

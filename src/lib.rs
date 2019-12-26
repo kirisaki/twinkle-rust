@@ -6,7 +6,7 @@ pub mod dispatcher;
 pub mod types;
 pub mod errors;
 
-use futures::future::join3;
+use futures::future::join;
 use tokio::time::timeout;
 use std::time::{Duration};
 use std::io::{Error, ErrorKind};
@@ -20,10 +20,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_ping() -> Result<(), std::io::Error> {
-        let (mut client, mut dispatcher, mut listener) = Client::open("127.0.0.1:3000").await?;
-        let (_, _,res) = join3(
-            timeout(WAIT ,listener.listen()),
-            timeout(WAIT ,dispatcher.run()),
+        let (mut client, manager) = Client::open("127.0.0.1:3000").await?;
+        let (_, res) = join(
+            timeout(WAIT, manager.run()),
             client.ping()).await;
         match res {
             Ok(_) => Ok(()),
@@ -33,10 +32,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_not_found() -> Result<(), std::io::Error> {
-        let (mut client, mut dispatcher, mut listener) = Client::open("127.0.0.1:3000").await?;
-        let (_, _, res) = join3(
-            timeout(WAIT ,listener.listen()),
-            timeout(WAIT ,dispatcher.run()),
+        let (mut client, manager) = Client::open("127.0.0.1:3000").await?;
+        let (_, res) = join(
+            timeout(WAIT, manager.run()),
             timeout(WAIT, async move {
                 client.unset(b"hoge".to_vec()).await;
                 client.get(b"hoge".to_vec()).await
@@ -49,10 +47,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_set_and_get() {
-        let (mut client, mut dispatcher, mut listener) = Client::open("127.0.0.1:3000").await.unwrap();
-        let (_, _, res) = join3(
-            timeout(WAIT ,listener.listen()),
-            timeout(WAIT ,dispatcher.run()),
+        let (mut client, manager) = Client::open("127.0.0.1:3000").await.unwrap();
+        let (_, res) = join(
+            timeout(WAIT, manager.run()),
             timeout(WAIT, async move {
                 client.set(b"fuga".to_vec(), b"foo".to_vec()).await;
                 client.get(b"fuga".to_vec()).await.unwrap()

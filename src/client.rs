@@ -2,9 +2,11 @@ use std::sync::Arc;
 use std::collections::HashMap;
 use std::io::{Error, ErrorKind};
 
+use futures::future::join;
+
 use tokio::net::{UdpSocket, ToSocketAddrs};
 use tokio::sync::Mutex;
-use tokio::sync::mpsc::{Sender, channel};
+use tokio::sync::mpsc::{Receiver, Sender, channel};
 use tokio::time::{delay_for, Duration};
 
 use crate::dispatcher::*;
@@ -19,17 +21,15 @@ pub struct Client {
 }
 
 impl Client {
-    pub async fn open<A: ToSocketAddrs>(addr: A) -> Result<(Client, Dispatcher, Listener), std::io::Error> {
+    pub async fn open<A: ToSocketAddrs>(addr: A) -> Result<(Client, Manager), std::io::Error> {
         let sock = UdpSocket::bind("0.0.0.0:0").await?;
         sock.connect(addr).await?;
-        let (rxs, txs) = sock.split();
         let (txc, rxc) = channel(1024*1024*1024);
 
         let tabl = Arc::new(Mutex::new(HashMap::new()));
         let c = Client{chan: txc, tabl: tabl.clone()};
-        let d = Dispatcher{chan: rxc, sock: txs};
-        let l = Listener{sock: rxs, tabl: tabl.clone()};
-        Ok((c, d, l))
+        let m = Manager::new(rxc, sock, tabl);
+        Ok((c, m))
     }
 
     pub async fn ping(&mut self) -> Result<Bytes, std::io::Error> {
@@ -60,4 +60,26 @@ async fn send(client: &mut Client, request: Request) -> Result<Bytes, std::io::E
         };
     }
     Err(Error::new(ErrorKind::Other, "request timeout"))
+}
+
+pub struct Manager {
+    dispatcher: Dispatcher,
+    listener: Listener,
+}
+
+impl Manager {
+    pub fn new(chan: Receiver<Bytes>, sock: UdpSocket, tabl: Arc<Mutex<Table>>) -> Manager{
+        let (rxs, txs) = sock.split();
+        Manager{
+            dispatcher: Dispatcher{chan, sock: txs},
+            listener: Listener{sock: rxs, tabl}
+        }
+    }
+    pub async fn run(mut self) -> Result<(), std::io::Error>{
+        let _ = join(
+            self.dispatcher.run(),
+            self.listener.run()
+        ).await;
+        Ok(())
+    }
 }
